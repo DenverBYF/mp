@@ -18,3 +18,7 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
+
+
+//微信相关路由
+Route::any('/wechat', 'WeChatController@serve');
