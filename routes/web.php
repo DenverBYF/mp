@@ -19,6 +19,9 @@ Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
 
+//用户登录请求
+Route::get('/mplogin', 'MpUserController@userLogin');
+
 
 //微信相关路由
 Route::any('/wechat', 'WeChatController@serve');

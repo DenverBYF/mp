@@ -15,6 +15,9 @@ class CreateGiftsTable extends Migration
     {
         Schema::create('gifts', function (Blueprint $table) {
             $table->increments('id');
+            $table->string('name', 50)->index();
+            $table->string('desc', 255);
+            $table->string('url', 255);
             $table->timestamps();
         });
     }
