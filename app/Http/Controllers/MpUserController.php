@@ -9,7 +9,7 @@ use Overtrue\LaravelWeChat\Facade as EasyWeChat;
 
 class MpUserController extends Controller
 {
-    //
+    //用户登录，
     public function userLogin(Request $request)
     {
         if (!$request->has('code')) {
@@ -36,10 +36,8 @@ class MpUserController extends Controller
             $sessionKey = $res['session_key'];
             $openId = $res['openid'];
             //查询用户信息，新用户插入
-            $user = MpUser::where('openid', $openId)->get();
+            $user = MpUser::where('openid', $openId)->get(['id']);
             if ($user->isEmpty()) {
-                var_dump('asdasdasd');
-                //todo 插入用户
                 $newUser = new MpUser();
                 $newUser->openid = $openId;
                 if(!$newUser->save()) {
@@ -47,12 +45,65 @@ class MpUserController extends Controller
                     return response("server busy", 500);
                 }
                 Log::info("create a new user");
+                $user = MpUser::where('openid', $openId)->get(['id']);
             }
+            $request->session()->put('mp_user_id', $user[0]->id);
             $request->session()->put('session_key', $sessionKey);
             $request->session()->put('openid', $openId);
+            Log::info("user login ".$user[0]->id);
             return response()->json([
                 'ret_code' => 0,
                 'ret_msg' => 'success',
+            ]);
+        }
+    }
+
+    //用户个人信息设置
+    public function setting(Request $request)
+    {
+        $id = $request->session()->get('mp_user_id');
+
+        if($request->isMethod('GET')) {
+            $user = MpUser::find($id);
+            return response()->json([
+                'ret_code' => 0,
+                'ret_msg' => 'succ',
+                'data' => $user
+            ]);
+        }
+
+        // 请求校验
+        $validator = \Validator::make($request->all(), [
+            'name' => 'required|max:10|bail',
+            'phone' => 'required||bail',
+            'address' => 'required|max:255|bail',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'ret_code' => 1,
+                'ret_msg' => '请正确填写个人信息表格',
+            ]);
+        }
+
+        // 更新信息
+        $user = MpUser::find($id);
+        $user->phone = $request->get('phone');
+        $user->name = $request->get('name');
+        $user->address = $request->get('address');
+        $user->email = $request->get('email');
+
+        if ($user->save()) {
+            Log::info("user setting success id:$id");
+            return response()->json([
+                'ret_code' => 0,
+                'ret_msg' => 'success'
+            ]);
+        } else {
+            Log::error("update user info fail id:$id data:".json_encode($request->all()));
+            return response()->json([
+                'ret_code' => 1,
+                'ret_msg' => '更新失败，请重试'
             ]);
         }
     }

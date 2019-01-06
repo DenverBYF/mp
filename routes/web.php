@@ -25,3 +25,10 @@ Route::get('/mplogin', 'MpUserController@userLogin');
 
 //微信相关路由
 Route::any('/wechat', 'WeChatController@serve');
+
+Route::middleware(['mp'])->group(function () {
+    Route::match(['post', 'get'], 'mp/setting', 'MpUserController@setting');
+});
+
+//开发测试路由及控制器
+Route::any('/test', 'TestController@index');

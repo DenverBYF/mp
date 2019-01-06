@@ -16,9 +16,10 @@ class CreateMpUsersTable extends Migration
         Schema::create('mp_users', function (Blueprint $table) {
             $table->increments('id');
             $table->string('address', 255)->nullable();
-            $table->string('phone', 20)->unique()->nullable();
-            $table->string('email', 50)->unique()->nullable();
+            $table->string('phone', 20)->nullable();
+            $table->string('email', 50)->nullable();
             $table->string('openid', 100)->unique();
+            $table->string('name', 10)->nullable();
             $table->timestamps();
         });
     }
