@@ -81,4 +81,26 @@ class ActController extends Controller
     {
         //
     }
+
+    /**
+     * get acts created by user
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function acts(Request $request)
+    {
+
+    }
+
+    /**
+     * get history acts data
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function history(Request $request)
+    {
+
+    }
 }

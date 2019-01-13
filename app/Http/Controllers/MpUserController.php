@@ -9,7 +9,13 @@ use Overtrue\LaravelWeChat\Facade as EasyWeChat;
 
 class MpUserController extends Controller
 {
-    //用户登录，
+    /**
+     * user Login
+     *
+     * @param Request $request
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\JsonResponse|\Illuminate\Http\Response
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     */
     public function userLogin(Request $request)
     {
         if (!$request->has('code')) {
@@ -58,7 +64,12 @@ class MpUserController extends Controller
         }
     }
 
-    //用户个人信息设置
+    /**
+     * set personal info
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function setting(Request $request)
     {
         $id = $request->session()->get('mp_user_id');
