@@ -23,7 +23,8 @@ class ActController extends Controller
      */
     public function create()
     {
-        //
+        // 创建新活动
+
     }
 
     /**
