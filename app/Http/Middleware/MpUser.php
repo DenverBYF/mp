@@ -18,8 +18,11 @@ class MpUser
         if ($request->session()->has('openid') and $request->session()->has('mp_user_id')) {
             return $next($request);
         } else {
+            // test only!!!!
+            $request->session()->put('mp_user_id', 2);
+            return $next($request);
             //未登陆，返回403
-            return response('not login', 403);
+            //return response('not login', 403);
         }
 
     }

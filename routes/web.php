@@ -28,8 +28,9 @@ Route::any('/wechat', 'WeChatController@serve');
 
 Route::middleware(['mp'])->prefix('mp')->group(function () {
     Route::match(['post', 'get'], 'setting', 'MpUserController@setting');
-    Route::get('acts', 'ActController@acts');
+    Route::get('myacts', 'ActController@acts');
     Route::get('history', 'ActController@history');
+    Route::resource('act', 'ActController');
 });
 
 //开发测试路由及控制器
