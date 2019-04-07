@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Act;
+use App\Gift;
+use App\Jobs\ActJob;
 use EasyWeChat\Kernel\Support\Str;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Qcloud\Cos\Client;
+use Qcloud\Cos\Client as Client;
 
 class ActController extends Controller
 {
@@ -17,10 +20,47 @@ class ActController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        var_dump('asdasdasdasd');
+        // 用户id
+        $mpUserId = $request->session()->get('mp_user_id');
+        Log::info('act index begin id: '.$mpUserId);
+
+        $resp = [];
+        $acts = Act::take(10)->skip($request->get('offset') * 10)->get();
+
+        $retData = [];
+
+        foreach ($acts as $act) {
+            switch ($act->status) {
+                case 3:
+                    // 已开奖
+                    break;
+                default:
+                    $resp['status'] = $act->status;
+                    break;
+            }
+            $resp['title'] = $act->name;
+            $resp['id'] = $act->id;
+            $resp['date'] = $act->open_time;
+            $resp['people'] = [
+                'max' => $act->max_number,
+                'gift' => $act->gift_number,
+                'now' => $act->now_number
+            ];
+            $gift = Gift::find($act->gift_id);
+            $resp['gift'] = [
+                'id' => $gift->id,
+                'url' => $gift->url,
+                'name' => $gift->name
+            ];
+
+            array_push($retData, $resp);
+        }
+        return response()->json([
+           'ret_code' => 0,
+           'ret_data' => $retData
+        ]);
     }
 
     /**
@@ -68,6 +108,12 @@ class ActController extends Controller
                 'ret_msg' => '参数错误'
             ]);
         }
+        if ($request->open_time < time()) {
+            return response()->json([
+                'ret_code' => 1,
+                'ret_msg' => '开奖时间必须晚于当前时间'
+            ]);
+        }
 
         $msg = '';   // 错误信息
 
@@ -81,7 +127,9 @@ class ActController extends Controller
 
         // 事务处理入库
         try {
-            DB::transaction(function () use ($request, $mpUserId, $msg) {
+            Log::info('save act info to db '.$mpUserId);
+            $actId = 0;
+            DB::transaction(function () use ($request, $mpUserId, $msg, &$actId) {
                 // 礼品信息
                 $giftId = DB::table('gifts')->insertGetId([
                     'name' => $request->gift_name,
@@ -90,7 +138,7 @@ class ActController extends Controller
                 ]);
 
                 // 活动信息
-                DB::table('acts')->insert([
+                $actId = DB::table('acts')->insertGetId([
                     'name' => $request->title,
                     'desc' => $request->desc,
                     'max_number' => $request->max_number,
@@ -110,6 +158,9 @@ class ActController extends Controller
             ]);
         }
         Log::info("create act success user: $mpUserId");
+
+        // 入队
+        ActJob::dispatch($actId)->delay(now()->addSecond($request->open_time - time()));
 
         return response()->json([
             'ret_code' => 0,
@@ -174,17 +225,32 @@ class ActController extends Controller
     public function show($id)
     {
         //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
+        $resp = [];
+        $act = Act::find($id);
+        $gift = Act::find($id)->Gift;
+        $user = Act::find($id)->User;
+        $resp['title'] = $act->name;
+        $resp['status'] = $act->status;
+        $resp['desc'] = $act->desc;
+        $resp['people'] = [
+            'max' => $act->max_number,
+            'gift' => $act->gift_number,
+            'now' => $act->now_number
+        ];
+        $resp['gift'] = [
+            'id' => $gift->id,
+            'name' => $gift->name,
+            'url' => $gift->url,
+            'desc' => $gift->desc
+        ];
+        $resp['user'] = [
+            'id' => $user->id,
+            'name' => $user->name
+        ];
+        return response()->json([
+            'ret_code' => 0,
+            'ret_data' => $resp
+        ]);
     }
 
     /**
@@ -218,7 +284,46 @@ class ActController extends Controller
      */
     public function acts(Request $request)
     {
+        // 用户id
+        $mpUserId = $request->session()->get('mp_user_id');
 
+        $resp = [];
+
+        $retData = [];
+
+        $acts = Act::where('mp_user_id', $mpUserId)->take(10)->skip($request->get('offset')*10)->get();
+
+        foreach ($acts as $act) {
+            switch ($act->status) {
+                case 3:
+                    // 已开奖
+                    break;
+                default:
+                    $resp['status'] = $act->status;
+                    break;
+            }
+            $resp['title'] = $act->name;
+            $resp['id'] = $act->id;
+            $resp['date'] = $act->open_time;
+            $resp['people'] = [
+                'max' => $act->max_number,
+                'gift' => $act->gift_number,
+                'now' => $act->now_number
+            ];
+            $gift = Gift::find($act->gift_id);
+            $resp['gift'] = [
+                'id' => $gift->id,
+                'url' => $gift->url,
+                'name' => $gift->name
+            ];
+
+            array_push($retData, $resp);
+        }
+
+        return response()->json([
+            'ret_code' => 0,
+            'ret_data' => $retData
+        ]);
     }
 
     /**
@@ -229,6 +334,114 @@ class ActController extends Controller
      */
     public function history(Request $request)
     {
+        $mpUserId = $request->session()->get('mp_user_id');
 
+        $resp = [];
+
+        $retData = [];
+
+        $acts = DB::table('act_user')->join('acts', 'act_user.act_id', '=', 'acts.id')->where('act_user.mp_user_id', '=', $mpUserId)->get();
+        // var_dump($acts);
+        foreach ($acts as $act) {
+            switch ($act->status) {
+                case 3:
+                    // 已开奖
+                    break;
+                default:
+                    $resp['status'] = $act->status;
+                    break;
+            }
+            $resp['title'] = $act->name;
+            $resp['id'] = $act->id;
+            $resp['date'] = $act->open_time;
+            $resp['people'] = [
+                'max' => $act->max_number,
+                'gift' => $act->gift_number,
+                'now' => $act->now_number
+            ];
+            $gift = Gift::find($act->gift_id);
+            $resp['gift'] = [
+                'id' => $gift->id,
+                'url' => $gift->url,
+                'name' => $gift->name
+            ];
+
+            array_push($retData, $resp);
+        }
+
+        return response()->json([
+            'ret_code' => 0,
+            'ret_data' => $retData
+        ]);
+    }
+
+    /**
+     * join the act
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function join(Request $request)
+    {
+        $mpUserId = $request->session()->get('mp_user_id');
+        $actId = $request->get('act');
+
+        // 入库数据
+        try {
+            DB::transaction(function () use($mpUserId, $actId) {
+                $detailInfo = DB::table('act_user')->where('act_id', '=', $actId)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+                if ($detailInfo->isNotEmpty()) {
+                    Log::info('people in this act user:'.$mpUserId.' act:'.$actId);
+                    throw (new \Exception('in'));
+                }
+                // 获取当前参与人数 使用悲观锁，保证人数不会被并发乱序更新
+                $actInfo = DB::table('acts')->where('id', '=', $actId)->select('max_number', 'now_number', 'open_time')->lockForUpdate()->get();
+                if ($actInfo[0]->max_number <= $actInfo[0]->now_number) {
+                    Log::info('act people is full user: '.$mpUserId.' act: '.$actId);
+                    throw (new \Exception('full'));
+                }
+                if (strtotime($actInfo[0]->open_time) < time()) {
+                    throw (new \Exception('over'));
+                }
+                // 加入详情表
+                DB::table('act_user')->insert([
+                   'act_id' => $actId,
+                   'mp_user_id' => $mpUserId
+                ]);
+                // 更新当前人数
+                DB::table('acts')->where('id', '=', $actId)->update([
+                    'now_number' => $actInfo[0]->now_number + 1
+                ]);
+            }, 5);
+        } catch (QueryException $e) {
+            Log::error('join act fail user: '.$mpUserId.' act: '.$actId.' error: '.$e);
+            return response()->json([
+                'ret_code' => 1,
+                'ret_msg' => '系统繁忙 请稍后再试'
+            ]);
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'full') {
+                return response()->json([
+                    'ret_code' => 1,
+                    'ret_msg' => '当前活动人数已满'
+                ]);
+            }
+            if ($e->getMessage() === 'in') {
+                return response()->json([
+                    'ret_code' => 1,
+                    'ret_msg' => '您已经参加了此次活动'
+                ]);
+            }
+            if ($e->getMessage() === 'over') {
+                return response()->json([
+                    'ret_code' => 1,
+                    'ret_msg' => '该活动已过期'
+                ]);
+            }
+        }
+        return response()->json([
+            'ret_code' => 0,
+            'ret_msg' => '参与成功'
+        ]);
     }
 }

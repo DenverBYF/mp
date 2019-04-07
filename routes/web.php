@@ -30,6 +30,7 @@ Route::middleware(['mp'])->prefix('mp')->group(function () {
     Route::match(['post', 'get'], 'setting', 'MpUserController@setting');
     Route::get('myacts', 'ActController@acts');
     Route::get('history', 'ActController@history');
+    Route::get('join', 'ActController@join');
     Route::resource('act', 'ActController');
 });
 

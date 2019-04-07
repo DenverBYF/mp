@@ -9,6 +9,6 @@ class Gift extends Model
     //
     public function Act()
     {
-        return $this->belongsTo('App/Act');
+        return $this->belongsTo('App\Act', 'gift_id');
     }
 }

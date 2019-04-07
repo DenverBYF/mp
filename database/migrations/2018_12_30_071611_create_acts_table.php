@@ -18,6 +18,7 @@ class CreateActsTable extends Migration
             $table->string('name', 50);
             $table->string('desc', 255);
             $table->integer('max_number')->default(50);
+            $table->integer('now_number')->default(1);
             $table->integer('gift_id')->unique();
             $table->integer('mp_user_id')->index();
             $table->integer('gift_number')->default(1);
