@@ -27,18 +27,15 @@ class ActController extends Controller
         Log::info('act index begin id: '.$mpUserId);
 
         $resp = [];
-        $acts = Act::take(10)->skip($request->get('offset') * 10)->get();
+        $acts = Act::take(10)->skip($request->get('offset') * 10)->orderby('open_time')->get();
 
         $retData = [];
 
         foreach ($acts as $act) {
-            switch ($act->status) {
-                case 3:
-                    // 已开奖
-                    break;
-                default:
-                    $resp['status'] = $act->status;
-                    break;
+            $resp['status'] = $act->status;
+            $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+            if ($detailInfo->isNotEmpty()) {
+                $resp['status'] = 2;
             }
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
@@ -101,10 +98,9 @@ class ActController extends Controller
         ]);
 
         if ($validator->fails()) {
-            var_dump($validator->errors());
             Log::error("invalid input mpUserId: $mpUserId");
             return response()->json([
-                'ret_code' => 400,
+                'ret_code' => 1,
                 'ret_msg' => '参数错误'
             ]);
         }
@@ -149,6 +145,10 @@ class ActController extends Controller
                     'gift_id' => $giftId,
                     'rule_id' => $request->rule_id,
                 ]);
+                DB::table('act_user')->insert([
+                    'act_id'=> $actId,
+                    'mp_user_id' => $mpUserId
+                ]);
             }, 5);
         } catch (QueryException $e) {
             Log::error("insert database fail user: $mpUserId, error: $e");
@@ -157,7 +157,7 @@ class ActController extends Controller
                 'ret_msg' => '创建失败'
             ]);
         }
-        Log::info("create act success user: $mpUserId");
+        Log::info("create act success user: $mpUserId; open_time: $request->open_time");
 
         // 入队
         ActJob::dispatch($actId)->delay(now()->addSecond($request->open_time - time()));
@@ -294,14 +294,7 @@ class ActController extends Controller
         $acts = Act::where('mp_user_id', $mpUserId)->take(10)->skip($request->get('offset')*10)->get();
 
         foreach ($acts as $act) {
-            switch ($act->status) {
-                case 3:
-                    // 已开奖
-                    break;
-                default:
-                    $resp['status'] = $act->status;
-                    break;
-            }
+            $resp['status'] = $act->status;
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
             $resp['date'] = $act->open_time;
@@ -343,14 +336,7 @@ class ActController extends Controller
         $acts = DB::table('act_user')->join('acts', 'act_user.act_id', '=', 'acts.id')->where('act_user.mp_user_id', '=', $mpUserId)->get();
         // var_dump($acts);
         foreach ($acts as $act) {
-            switch ($act->status) {
-                case 3:
-                    // 已开奖
-                    break;
-                default:
-                    $resp['status'] = $act->status;
-                    break;
-            }
+            $resp['status'] = $act->status;
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
             $resp['date'] = $act->open_time;
@@ -412,6 +398,12 @@ class ActController extends Controller
                 DB::table('acts')->where('id', '=', $actId)->update([
                     'now_number' => $actInfo[0]->now_number + 1
                 ]);
+                // 人数满时，修改状态
+                if ($actInfo[0]->max_number === $actInfo[0]->now_number + 1) {
+                    DB::table('acts')->where('id', '=', $actId)->update([
+                        'status' => 1
+                    ]);
+                }
             }, 5);
         } catch (QueryException $e) {
             Log::error('join act fail user: '.$mpUserId.' act: '.$actId.' error: '.$e);

@@ -19,10 +19,10 @@ class MpUser
             return $next($request);
         } else {
             // test only!!!!
-            $request->session()->put('mp_user_id', 1);
-            return $next($request);
+            // $request->session()->put('mp_user_id', 1);
+            // return $next($request);
             //未登陆，返回403
-            //return response('not login', 403);
+            return response('not login', 403);
         }
 
     }
