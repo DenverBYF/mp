@@ -230,18 +230,32 @@ class ActController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  Request $request;int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         //
+        $mpUserId = $request->session()->get('mp_user_id');
         $resp = [];
         $act = Act::find($id);
         $gift = Act::find($id)->Gift;
         $user = Act::find($id)->User;
         $resp['title'] = $act->name;
         $resp['status'] = $act->status;
+        if ($act->status !== 3) {
+            $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+            if ($detailInfo->isNotEmpty()) {
+                $resp['status'] = 2;
+            }
+        } else {
+            $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
+            if ($resultStatus[0]->status === 1) {
+                $resp['status'] = 4;
+            } else {
+                $resp['status'] = 5;
+            }
+        }
         $resp['desc'] = $act->desc;
         $resp['people'] = [
             'max' => $act->max_number,
