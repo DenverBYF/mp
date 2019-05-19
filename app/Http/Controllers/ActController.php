@@ -94,7 +94,8 @@ class ActController extends Controller
             'gift' => 'required|file',
             'gift_name' => 'required|max:50',
             'gift_desc' => 'required|max:100',
-            'rule_id' => 'required|integer'
+            'rule_id' => 'required|integer',
+            'form_id' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -147,7 +148,8 @@ class ActController extends Controller
                 ]);
                 DB::table('act_user')->insert([
                     'act_id'=> $actId,
-                    'mp_user_id' => $mpUserId
+                    'mp_user_id' => $mpUserId,
+                    'form_id' => $request->form_id
                 ]);
             }, 5);
         } catch (QueryException $e) {
@@ -370,11 +372,11 @@ class ActController extends Controller
     public function join(Request $request)
     {
         $mpUserId = $request->session()->get('mp_user_id');
-        $actId = $request->get('act');
+        $actId = $request->act;
 
         // 入库数据
         try {
-            DB::transaction(function () use($mpUserId, $actId) {
+            DB::transaction(function () use($mpUserId, $actId, $request) {
                 $detailInfo = DB::table('act_user')->where('act_id', '=', $actId)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
                 if ($detailInfo->isNotEmpty()) {
                     Log::info('people in this act user:'.$mpUserId.' act:'.$actId);
@@ -391,8 +393,9 @@ class ActController extends Controller
                 }
                 // 加入详情表
                 DB::table('act_user')->insert([
-                   'act_id' => $actId,
-                   'mp_user_id' => $mpUserId
+                    'act_id' => $actId,
+                    'mp_user_id' => $mpUserId,
+                    'form_id' => $request->form_id
                 ]);
                 // 更新当前人数
                 DB::table('acts')->where('id', '=', $actId)->update([
