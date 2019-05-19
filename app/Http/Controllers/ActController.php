@@ -27,15 +27,24 @@ class ActController extends Controller
         Log::info('act index begin id: '.$mpUserId);
 
         $resp = [];
-        $acts = Act::take(10)->skip($request->get('offset') * 10)->orderby('open_time')->get();
+        $acts = Act::take(20)->skip($request->get('offset') * 10)->orderby('open_time')->get();
 
         $retData = [];
 
         foreach ($acts as $act) {
             $resp['status'] = $act->status;
-            $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
-            if ($detailInfo->isNotEmpty()) {
-                $resp['status'] = 2;
+            if ($act->status !== 3) {
+                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+                if ($detailInfo->isNotEmpty()) {
+                    $resp['status'] = 2;
+                }
+            } else {
+                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
+                if ($resultStatus[0]->status === 1) {
+                    $resp['status'] = 4;
+                } else {
+                    $resp['status'] = 5;
+                }
             }
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
@@ -297,6 +306,19 @@ class ActController extends Controller
 
         foreach ($acts as $act) {
             $resp['status'] = $act->status;
+            if ($act->status !== 3) {
+                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+                if ($detailInfo->isNotEmpty()) {
+                    $resp['status'] = 2;
+                }
+            } else {
+                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
+                if ($resultStatus[0]->status === 1) {
+                    $resp['status'] = 4;
+                } else {
+                    $resp['status'] = 5;
+                }
+            }
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
             $resp['date'] = $act->open_time;
@@ -339,6 +361,19 @@ class ActController extends Controller
         // var_dump($acts);
         foreach ($acts as $act) {
             $resp['status'] = $act->status;
+            if ($act->status !== 3) {
+                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+                if ($detailInfo->isNotEmpty()) {
+                    $resp['status'] = 2;
+                }
+            } else {
+                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
+                if ($resultStatus[0]->status === 1) {
+                    $resp['status'] = 4;
+                } else {
+                    $resp['status'] = 5;
+                }
+            }
             $resp['title'] = $act->name;
             $resp['id'] = $act->id;
             $resp['date'] = $act->open_time;

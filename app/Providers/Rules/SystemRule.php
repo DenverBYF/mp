@@ -17,7 +17,7 @@ class SystemRule implements GenActResultInterface
         // 系统生成中奖结果
         $ret = [];
         for ($i = 0; $i < $number; $i ++) {
-            $tmpValue = mt_rand(0, $total);
+            $tmpValue = mt_rand(0, $total - 1);
             while (in_array($tmpValue, $ret)) {
                 $tmpValue = mt_rand(0, $total);
             }
