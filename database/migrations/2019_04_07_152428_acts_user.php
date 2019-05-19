@@ -18,7 +18,7 @@ class ActsUser extends Migration
             $table->increments('id');
             $table->integer('act_id');
             $table->integer('mp_user_id');
-            $table->integer('status')->default(0);  // 0:为开奖 1:未中奖 2:已中奖
+            $table->integer('status')->default(0);  // 0:为开奖(未中奖) 1:中奖
             $table->index(['act_id', 'status', 'mp_user_id']);
             $table->index(['mp_user_id', 'status']);
             $table->timestamps();
