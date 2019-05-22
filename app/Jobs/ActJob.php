@@ -55,6 +55,9 @@ class ActJob implements ShouldQueue
                 // 系统默认随机生成
                 $genResultHandle = new GenActResult(new Rules\SystemRule());
                 break;
+            case 2:
+                $genResultHandle = new GenActResult(new Rules\LotteryRule());
+                break;
             default:
                 $genResultHandle = new GenActResult(new Rules\SystemRule());
                 break;
@@ -66,7 +69,7 @@ class ActJob implements ShouldQueue
         // 结果入库，模版消息推送
         $mini = EasyWeChat::miniProgram();
         foreach ($result as $item) {
-            Log::info("act $this->id open result get $item  {$joinNumbers[$item]->mp_user_id}");
+            Log::info("act $this->id open result get id is $item user id is  {$joinNumbers[$item]->mp_user_id}");
             DB::table('act_user')->where('act_id', '=', $this->id)->where('mp_user_id', '=', $joinNumbers[$item]->mp_user_id)->update(['status' => 1]);
             $formId = DB::table('act_user')->where('act_id', '=', $this->id)->where('mp_user_id', '=', $joinNumbers[$item]->mp_user_id)->select('form_id')->get();
             $userInfo = MpUser::find($joinNumbers[$item]->mp_user_id);

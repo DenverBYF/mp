@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Act;
 use App\Gift;
 use App\Jobs\ActJob;
+use App\MpUser;
 use EasyWeChat\Kernel\Support\Str;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -89,6 +90,12 @@ class ActController extends Controller
     {
         // 用户id
         $mpUserId = $request->session()->get('mp_user_id');
+        if (!$this->judgeUserInfo($mpUserId)) {
+            return response()->json([
+                'ret_code' => 10000,
+                'ret_msg' => 'no info'
+            ]);
+        }
 
         Log::info('act store begin mpUserId'. $mpUserId);
 
@@ -421,6 +428,12 @@ class ActController extends Controller
     public function join(Request $request)
     {
         $mpUserId = $request->session()->get('mp_user_id');
+        if (!$this->judgeUserInfo($mpUserId)) {
+            return response()->json([
+                'ret_code' => 10000,
+                'ret_msg' => 'no info'
+            ]);
+        }
         $actId = $request->act;
 
         // 入库数据
@@ -487,5 +500,14 @@ class ActController extends Controller
             'ret_code' => 0,
             'ret_msg' => '参与成功'
         ]);
+    }
+
+    private function judgeUserInfo($id)
+    {
+        $user = MpUser::find($id);
+        if (is_null($user->address) || is_null($user->phone) || is_null($user->name)) {
+            return false;
+        }
+        return true;
     }
 }
