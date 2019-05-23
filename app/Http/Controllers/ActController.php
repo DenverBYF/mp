@@ -41,10 +41,12 @@ class ActController extends Controller
                 }
             } else {
                 $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-                if ($resultStatus[0]->status === 1) {
-                    $resp['status'] = 4;
-                } else {
-                    $resp['status'] = 5;
+                if ($resultStatus->isNotEmpty()) {
+                    if ($resultStatus[0]->status === 1) {
+                        $resp['status'] = 4;
+                    } else {
+                        $resp['status'] = 5;
+                    }
                 }
             }
             $resp['title'] = $act->name;
@@ -257,10 +259,12 @@ class ActController extends Controller
             }
         } else {
             $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-            if ($resultStatus[0]->status === 1) {
-                $resp['status'] = 4;
-            } else {
-                $resp['status'] = 5;
+            if ($resultStatus->isNotEmpty()) {
+                if ($resultStatus[0]->status === 1) {
+                    $resp['status'] = 4;
+                } else {
+                    $resp['status'] = 5;
+                }
             }
         }
         $resp['desc'] = $act->desc;

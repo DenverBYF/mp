@@ -16,6 +16,7 @@ class LotteryRule implements GenActResultInterface
     public function getResult($total, $number)
     {
         // 根据彩票结果生成
+        Log::info("lottery rule $total $number");
         $idArray = [];
         for ($i = 0; $i < $total; $i ++) {
             $tmp = '';
