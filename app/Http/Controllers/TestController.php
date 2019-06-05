@@ -12,7 +12,18 @@ class TestController extends Controller
     //
     public function index(Request $request)
     {
-        $joinNumbers = DB::table('act_user')->where('act_id', '=', 10)->select('mp_user_id')->get();
-        dd($joinNumbers[0]->mp_user_id);
+        $i = 0;
+        $info = DB::table('act_user')->where('act_id', '=', 3)->select('mp_user_id')->get()->toArray();
+        $t = new \stdClass();
+        $t->mp_user_id = 2;
+        var_dump($t);
+        var_dump(array_search($t, $info));
+    }
+}
+class Test {
+    public $mp_user_id;
+    public function __construct($id)
+    {
+        $this->mp_user_id = $id;
     }
 }

@@ -17,14 +17,14 @@ class LotteryRule implements GenActResultInterface
     {
         // 根据彩票结果生成
         Log::info("lottery rule $total $number");
-        $idArray = [];
+        /*$idArray = [];
         for ($i = 0; $i < $total; $i ++) {
             $tmp = '';
             for ($j = 0; $j < 5; $j ++) {
                 $tmp .= strval(mt_rand(0, 9));
             }
             $idArray[] = $tmp;
-        }
+        }*/
         // 获取抽奖结果
         $url = 'http://apis.juhe.cn/lottery/query';
         $ch = curl_init();
@@ -39,7 +39,7 @@ class LotteryRule implements GenActResultInterface
         $res = json_decode($res);
         $lotteryResult = $res->result->lottery_res;
         $lotteryResult = intval(str_replace(",", "", $lotteryResult));
-
+        /*
         $resultIndex = [];
         $resultCopy = [];
         for ($i = 0; $i < $total; $i ++) {
@@ -55,7 +55,27 @@ class LotteryRule implements GenActResultInterface
         for ($i = 0; $i < $number; $i ++) {
             $result[] = array_search($resultIndex[$i], $resultCopy);
         }
-
+        */
+        $result = [];
+        // 取余数作为中奖结果中心数字
+        $luckyNumber = $lotteryResult % $total;
+        // 左右区间剩余
+        $left = $luckyNumber;
+        $right = $total - $luckyNumber;
+        // 左右扩散中奖区间长度
+        $leftLength = ceil(($number - 1) / 2);
+        $rightLength = intval(($number - 1) / 2);
+        if ($left < $leftLength) {
+            $rightLength = $rightLength + ($leftLength - $left);
+            $leftLength = $left;
+        }
+        if ($right < $rightLength) {
+            $leftLength = $leftLength + ($rightLength - $right);
+            $rightLength = $right;
+        }
+        for ($i = $luckyNumber - $leftLength; $i <= $luckyNumber + $rightLength; $i ++) {
+            $result[] = $i;
+        }
         return $result;
     }
 

@@ -19,6 +19,8 @@ class GenActResult
         $this->genType = $GenType;
     }
 
+    // total:总参与人数
+    // number:中奖人数
     public function handle($total, $number)
     {
         return $this->genType->getResult($total, $number);

@@ -18,7 +18,7 @@ class ActController extends Controller
 {
     /**
      * Display a listing of the resource.
-     *
+     * @param Request $request
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
@@ -33,39 +33,10 @@ class ActController extends Controller
         $retData = [];
 
         foreach ($acts as $act) {
-            $resp['status'] = $act->status;
-            if ($act->status !== 3) {
-                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
-                if ($detailInfo->isNotEmpty()) {
-                    $resp['status'] = 2;
-                }
-            } else {
-                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-                if ($resultStatus->isNotEmpty()) {
-                    if ($resultStatus[0]->status === 1) {
-                        $resp['status'] = 4;
-                    } else {
-                        $resp['status'] = 5;
-                    }
-                }
-            }
-            $resp['title'] = $act->name;
-            $resp['id'] = $act->id;
-            $resp['date'] = $act->open_time;
-            $resp['people'] = [
-                'max' => $act->max_number,
-                'gift' => $act->gift_number,
-                'now' => $act->now_number
-            ];
-            $gift = Gift::find($act->gift_id);
-            $resp['gift'] = [
-                'id' => $gift->id,
-                'url' => $gift->url,
-                'name' => $gift->name
-            ];
-
+            $this->genCommActInfo($act, $mpUserId, $resp);
             array_push($retData, $resp);
         }
+
         return response()->json([
            'ret_code' => 0,
            'ret_data' => $retData
@@ -83,10 +54,10 @@ class ActController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * store an act
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Throwable
      */
     public function store(Request $request)
     {
@@ -191,7 +162,7 @@ class ActController extends Controller
 
     /**
      * 礼品图片处理,安全校验,上传腾讯云
-     * @param $image $mpUserId &$errMsg
+     * @param $image;$mpUserId;&$errMsg
      * @return integer
      */
     private function imageParse($image, $mpUserId, &$errMsg)
@@ -239,7 +210,8 @@ class ActController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  Request $request;int  $id
+     * @param  Request $request
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function show(Request $request, $id)
@@ -248,37 +220,9 @@ class ActController extends Controller
         $mpUserId = $request->session()->get('mp_user_id');
         $resp = [];
         $act = Act::find($id);
-        $gift = Act::find($id)->Gift;
         $user = Act::find($id)->User;
-        $resp['title'] = $act->name;
-        $resp['status'] = $act->status;
-        if ($act->status !== 3) {
-            $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
-            if ($detailInfo->isNotEmpty()) {
-                $resp['status'] = 2;
-            }
-        } else {
-            $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-            if ($resultStatus->isNotEmpty()) {
-                if ($resultStatus[0]->status === 1) {
-                    $resp['status'] = 4;
-                } else {
-                    $resp['status'] = 5;
-                }
-            }
-        }
-        $resp['desc'] = $act->desc;
-        $resp['people'] = [
-            'max' => $act->max_number,
-            'gift' => $act->gift_number,
-            'now' => $act->now_number
-        ];
-        $resp['gift'] = [
-            'id' => $gift->id,
-            'name' => $gift->name,
-            'url' => $gift->url,
-            'desc' => $gift->desc
-        ];
+        $this->genCommActInfo($act, $mpUserId, $resp);
+        $resp['lotteryId'] = $this->getUserLotteryId($id, $mpUserId);
         $resp['user'] = [
             'id' => $user->id,
             'name' => $user->name
@@ -330,35 +274,7 @@ class ActController extends Controller
         $acts = Act::where('mp_user_id', $mpUserId)->take(10)->skip($request->get('offset')*10)->get();
 
         foreach ($acts as $act) {
-            $resp['status'] = $act->status;
-            if ($act->status !== 3) {
-                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
-                if ($detailInfo->isNotEmpty()) {
-                    $resp['status'] = 2;
-                }
-            } else {
-                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-                if ($resultStatus[0]->status === 1) {
-                    $resp['status'] = 4;
-                } else {
-                    $resp['status'] = 5;
-                }
-            }
-            $resp['title'] = $act->name;
-            $resp['id'] = $act->id;
-            $resp['date'] = $act->open_time;
-            $resp['people'] = [
-                'max' => $act->max_number,
-                'gift' => $act->gift_number,
-                'now' => $act->now_number
-            ];
-            $gift = Gift::find($act->gift_id);
-            $resp['gift'] = [
-                'id' => $gift->id,
-                'url' => $gift->url,
-                'name' => $gift->name
-            ];
-
+            $this->genCommActInfo($act, $mpUserId, $resp);
             array_push($retData, $resp);
         }
 
@@ -385,35 +301,7 @@ class ActController extends Controller
         $acts = DB::table('act_user')->join('acts', 'act_user.act_id', '=', 'acts.id')->where('act_user.mp_user_id', '=', $mpUserId)->get();
         // var_dump($acts);
         foreach ($acts as $act) {
-            $resp['status'] = $act->status;
-            if ($act->status !== 3) {
-                $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
-                if ($detailInfo->isNotEmpty()) {
-                    $resp['status'] = 2;
-                }
-            } else {
-                $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
-                if ($resultStatus[0]->status === 1) {
-                    $resp['status'] = 4;
-                } else {
-                    $resp['status'] = 5;
-                }
-            }
-            $resp['title'] = $act->name;
-            $resp['id'] = $act->id;
-            $resp['date'] = $act->open_time;
-            $resp['people'] = [
-                'max' => $act->max_number,
-                'gift' => $act->gift_number,
-                'now' => $act->now_number
-            ];
-            $gift = Gift::find($act->gift_id);
-            $resp['gift'] = [
-                'id' => $gift->id,
-                'url' => $gift->url,
-                'name' => $gift->name
-            ];
-
+            $this->genCommActInfo($act, $mpUserId, $resp);
             array_push($retData, $resp);
         }
 
@@ -424,10 +312,9 @@ class ActController extends Controller
     }
 
     /**
-     * join the act
-     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
+     * @throws \Throwable
      */
     public function join(Request $request)
     {
@@ -506,6 +393,11 @@ class ActController extends Controller
         ]);
     }
 
+    /**
+     * judge if user have his basic info
+     * @param $id
+     * @return bool
+     */
     private function judgeUserInfo($id)
     {
         $user = MpUser::find($id);
@@ -513,5 +405,62 @@ class ActController extends Controller
             return false;
         }
         return true;
+    }
+
+    /**
+     * get user lottery id to show
+     * @param int $actId
+     * @param int $userId
+     * @return int
+    */
+    private function getUserLotteryId($actId, $userId)
+    {
+        $info = DB::table('act_user')->where('act_id', '=', $actId)->select('mp_user_id')->get()->toArray();
+        $user = new \stdClass();
+        $user->mp_user_id = $userId;
+        return array_search($user, $info);
+    }
+
+    /**
+     * gen common act info
+     * @param Act $act
+     * @param int  $mpUserId
+     * @param &  $resp
+     * @return null
+     *
+    */
+    private function genCommActInfo($act, $mpUserId, &$resp)
+    {
+        $resp['status'] = $act->status;
+        if ($act->status !== 3) {
+            $detailInfo = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('id')->get();
+            if ($detailInfo->isNotEmpty()) {
+                $resp['status'] = 2;
+            }
+        } else {
+            $resultStatus = DB::table('act_user')->where('act_id', '=', $act->id)->where('mp_user_id', '=', $mpUserId)->select('status')->get();
+            if ($resultStatus->isNotEmpty()) {
+                if ($resultStatus[0]->status === 1) {
+                    $resp['status'] = 4;
+                } else {
+                    $resp['status'] = 5;
+                }
+            }
+        }
+        $resp['title'] = $act->name;
+        $resp['id'] = $act->id;
+        $resp['date'] = $act->open_time;
+        $resp['people'] = [
+            'max' => $act->max_number,
+            'gift' => $act->gift_number,
+            'now' => $act->now_number
+        ];
+        $gift = Gift::find($act->gift_id);
+        $resp['gift'] = [
+            'id' => $gift->id,
+            'url' => $gift->url,
+            'name' => $gift->name,
+            'desc' => $gift->desc
+        ];
     }
 }
